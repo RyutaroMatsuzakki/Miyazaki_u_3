@@ -73,7 +73,7 @@ class HMM:
 
     def compute_humming(self):
         for i in range(0, self.n):
-            if self.x[i] == self.xmap[i]:
+            if self.x[i] != self.xmap[i]:
                 self.humming = self.humming+1;
         #print('humming:{0}'.format(self.humming))
 
@@ -84,14 +84,14 @@ class HMM:
 def demo():
 
     n = 200
-    sigmas = [0.1, 0.5, 0.7, 1.0, 1.5, 2.0, 3.0]
     humming = 0.0
     roop = 1000
     count = 0
     hummings = []
+    sigmas = []
 
-    for sigma in sigmas:
-        hmm = HMM(n, sigma, humming) # 隠れマルコフモデルを作る．n: 入力信号の数
+    for sigma in range(1, 31, 1):
+        hmm = HMM(n, float(sigma) / 10, humming) # 隠れマルコフモデルを作る．n: 入力信号の数
         for i in range(0, roop):
             hmm.generate_x()
             hmm.generate_y()
@@ -100,17 +100,20 @@ def demo():
         hmm.average_humming(roop)
         hummings.append(hmm.humming)
         t = range(n)
-        plt.plot(t, hmm.x, label='x')
-        plt.plot(t, hmm.y, '.g', label='y') # g は緑色， * は点
-        plt.plot(t, hmm.xmap, '.r', label='xmap')
+        #plt.plot(t, hmm.x, label='x')
+        #plt.plot(t, hmm.y, '.g', label='y') # g は緑色， * は点
+        #plt.plot(t, hmm.xmap, '.r', label='xmap')
 
-        plt.title('Original Signal, Observations')
-        plt.xlabel('t') # X 軸
-        plt.ylabel('x, y') # Y 軸
-        plt.legend() # 描画
+        #plt.title('Original Signal, Observations')
+        #plt.xlabel('t') # X 軸
+        #plt.ylabel('x, y') # Y 軸
+        #plt.legend() # 描画
 
-        plt.show() # 描画
+        #plt.show() # 描画
         count = count + 1
+    for i in range(1, 31, 1):
+        sigmas.append(float(i)/10)
+    print(sigmas)
     plt.bar(sigmas, hummings, tick_label=sigmas, width=0.1)
     plt.show() # 描画
 
