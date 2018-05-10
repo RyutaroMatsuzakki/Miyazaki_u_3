@@ -16,7 +16,7 @@ class HMM:
     def __init__(self, n, sigma, humming):
         self.n = n
         self.sigma = sigma
-        self.humming = humming
+        self.humming = [0 for i in range(1000)]
         self.S = make_matrix(2, self.n)
         self.C = make_matrix(2, self.n)
 
@@ -71,15 +71,23 @@ class HMM:
         for i in range(199, 0, -1):
             self.xmap[i - 1] = self.C[self.xmap[i]][i]
 
-    def compute_humming(self):
-        for i in range(0, self.n):
-            if self.x[i] != self.xmap[i]:
-                self.humming = self.humming+1;
+    def compute_humming(self, i):
+        for j in range(0, self.n):
+            if self.x[j] != self.xmap[j]:
+                self.humming[i] += 1;
+        #self.humming[sigma][i] = self.humming[sigma][i] / self.n
         #print('humming:{0}'.format(self.humming))
 
-    def average_humming(self, roop):
-        self.humming = self.humming / self.n / roop
-        print('average:{0}'.format(self.humming))
+    def average_humming(self, roop, average):
+        for i in range(0, roop):
+            average += self.humming[i]
+        average = average /(roop * self.n)
+        print('average:{0}'.format(average))
+        return average
+
+        #分散を求める
+    def dispersion_humming(self, roop, average):
+
 
 def demo():
 
@@ -87,18 +95,22 @@ def demo():
     humming = 0.0
     roop = 1000
     count = 0
-    hummings = []
     sigmas = []
+    average = 0.0
+    averages = []
+    dispersion = 0.0
+    dispersions = []
 
     for sigma in range(1, 31, 1):
         hmm = HMM(n, float(sigma) / 10, humming) # 隠れマルコフモデルを作る．n: 入力信号の数
         for i in range(0, roop):
+            average = 0.0
             hmm.generate_x()
             hmm.generate_y()
             hmm.compute_xmap()
-            hmm.compute_humming()
-        hmm.average_humming(roop)
-        hummings.append(hmm.humming)
+            hmm.compute_humming(i)
+        averages.append(hmm.average_humming(roop, average))
+        dispersions.append(hmm.dispersion_humming(roop, averages[sigma]))
         t = range(n)
         #plt.plot(t, hmm.x, label='x')
         #plt.plot(t, hmm.y, '.g', label='y') # g は緑色， * は点
@@ -114,7 +126,7 @@ def demo():
     for i in range(1, 31, 1):
         sigmas.append(float(i)/10)
     print(sigmas)
-    plt.bar(sigmas, hummings, tick_label=sigmas, width=0.1)
+    plt.bar(sigmas, averages, tick_label=sigmas, width=0.1)
     plt.show() # 描画
 
 if __name__ == '__main__':
