@@ -86,8 +86,12 @@ class HMM:
         return average
 
         #分散を求める
-    def dispersion_humming(self, roop, average):
-
+    def dispersion_humming(self, roop, average, dispersion):
+        #1/nΣ(i = 1, nまで)(xi^2 - μ^2)
+        for i in range(0, roop):
+            dispersion += (pow((self.humming[i] / self.n), 2) - pow(average, 2))
+        dispersion = dispersion / roop
+        return dispersion
 
 def demo():
 
@@ -103,6 +107,7 @@ def demo():
 
     for sigma in range(1, 31, 1):
         hmm = HMM(n, float(sigma) / 10, humming) # 隠れマルコフモデルを作る．n: 入力信号の数
+        dispersion = 0.0
         for i in range(0, roop):
             average = 0.0
             hmm.generate_x()
@@ -110,7 +115,7 @@ def demo():
             hmm.compute_xmap()
             hmm.compute_humming(i)
         averages.append(hmm.average_humming(roop, average))
-        dispersions.append(hmm.dispersion_humming(roop, averages[sigma]))
+        dispersions.append(hmm.dispersion_humming(roop, averages[sigma-1], dispersion))
         t = range(n)
         #plt.plot(t, hmm.x, label='x')
         #plt.plot(t, hmm.y, '.g', label='y') # g は緑色， * は点
@@ -126,7 +131,10 @@ def demo():
     for i in range(1, 31, 1):
         sigmas.append(float(i)/10)
     print(sigmas)
+    print(dispersions)
     plt.bar(sigmas, averages, tick_label=sigmas, width=0.1)
+    plt.show() # 描画
+    plt.bar(sigmas, dispersions, tick_label=sigmas, width=0.1)
     plt.show() # 描画
 
 if __name__ == '__main__':
