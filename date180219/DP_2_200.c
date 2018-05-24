@@ -1,11 +1,11 @@
 #include <stdio.h>
-#include <stdlib.h> 
+#include <stdlib.h>
 #include <math.h>
 
 #define RAND_SEED 2014628
 #define N_DATA 200
 
-#define SIGMA 0.7 // 加わるノイズの標準偏差
+#define SIGMA 0.1 // 加わるノイズの標準偏差
 #define P00 0.99 // 状態遷移確率の定義．P01 は 0→1 の遷移確率
 #define P01 0.01
 #define P10 0.03
@@ -17,7 +17,7 @@ int xmap[N_DATA]; // 推定値． 0 か 1
 double y[N_DATA];  // 観測データ
 
 int xhat[N_DATA][2];  // xhat[2][b] = argmax_a { ( f[2][a] + h(a,b) } 教科書  p.218 参照
-double f[N_DATA][2];  
+double f[N_DATA][2];
 
 double nrnd();
 
@@ -31,7 +31,7 @@ void generate_x (){
     else{
         x[0]=1;
     }
-        
+
     for (i=1; i<N_DATA; i++){   //確立によって数値を遷移させていく
         if(x[i - 1] == 0){
             if(drand48() < P00){
@@ -66,11 +66,11 @@ void generate_y (){
 void compute_xmap (){
 
     int i = 0;
-    f[i][0] = pow((y[i] - 0), 2);
-    f[i][1] = pow((y[i] - 1), 2);
+    f[i][0] = -pow((y[i] - 0), 2);
+    f[i][1] = -pow((y[i] - 1), 2);
     for (i=1; i<N_DATA; i++){
         f[i][0] = f[i - 1][0] - pow((y[i] - 0), 2) +log(P00);
-        if(f[i - 1][1] + pow((y[i] - 0), 2) + log(P10) > f[i][0]){
+        if(f[i - 1][1] - pow((y[i] - 0), 2) + log(P10) > f[i][0]){
             f[i][0]= f[i - 1][1] - pow((y[i] - 0), 2) + log(P10);
             xhat[i][0] = 1;
         }
@@ -78,7 +78,7 @@ void compute_xmap (){
             xhat[i][0] = 0;
         }
         f[i][1] = f[i - 1][0] - pow((y[i] - 1), 2) + log(P01);
-        if(f[i - 1][1] + pow((y[i] - 1), 2) + log(P11) > f[i][1]){
+        if(f[i - 1][1] - pow((y[i] - 1), 2) + log(P11) > f[i][1]){
             f[i][1] = f[i - 1][1] - pow((y[i] - 1), 2) + log(P11);
             xhat[i][1] = 1;
         }
@@ -92,7 +92,7 @@ void compute_xmap (){
     else{
         xmap[i-1] = 1;
     }
-    for(i=199; i >= 0; i--){
+    for(i=199; i > 0; i--){
         xmap[i-1] = xhat[i][xmap[i]];
         /*printf("%d:xhat0= %d\n", i, xhat[i][0]);
         */
@@ -101,10 +101,10 @@ void compute_xmap (){
 }
 
 void show_resuls(){
-    
+
     int i;
     for (i=0; i<N_DATA; i++){
-        printf("%d\t%d\t%.8lf\t%d\n",i+1, x[i],y[i],xmap[i]+3 );
+        printf("%d\t%d\t%.8lf\t%d\n",i+1, x[i],y[i],xmap[i] );
     }
 
 }
@@ -115,7 +115,7 @@ void show_resuls(){
 double nrnd(){
     static int sw=0;
     static double r1,r2,s;
-    
+
     if (sw==0){
         sw=1;
         do {
@@ -140,14 +140,13 @@ int main ( int argc , char * argv []){
 /* 問題を作る（200 個のデータ生成） */
     generate_x ();
     generate_y ();
-    
+
 /* 復元する */
-    compute_xmap (); 
-    
+    compute_xmap ();
+
 /* 結果を表示する */
     show_resuls();
 
 
     return 0;
 }
-

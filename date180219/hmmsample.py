@@ -1,110 +1,130 @@
+# -*- coding: utf-8 -*-
+import math
+import random
 import matplotlib.pyplot as plt
-import numpy as np
+
+#random.seed(20140123)
 
 
-class HiddenMarkovModel(object):#隠れマルコフモデルのクラス
+def make_matrix(a, b, fill=0.0): #  NumPy を使って高速に処理する方法がある
+    m = []
+    for i in range(a):
+        m.append([fill]*b)
+    return m
 
-    def __init__(self, n_states_hidden, n_states_observe): #初期化の関数
-        self.n_states_hidden = n_states_hidden #潜在変数の状態数
-        self.n_states_observe = n_states_observe #観測変数の状態数
-        #初期潜在変数の分布パラメータpiの初期化
-        self.initial = np.ones(n_states_hidden) / n_states_hidden
-        #遷移確率行列Aの初期化
-        self.transition = np.ones((n_states_hidden, n_states_hidden)) / (2 * n_states_hidden)
-        self.transition += np.eye(n_states_hidden) * 0.5
-        #観測変数の分布のパラメータmuの初期化
-        self.observation = np.random.rand(n_states_observe, n_states_hidden)
-        self.observation /= np.sum(self.observation, axis=0, keepdims=True)
+class HMM:
+    def __init__(self, n, sigma, humming):
+        self.n = n
+        self.sigma = sigma
+        self.humming = [0 for i in range(1000)]
+        self.S = make_matrix(2, self.n)
+        self.C = make_matrix(2, self.n)
 
-    #pi, A, muの最尤推定
-    def fit(self, sequence, iter_max=100):
-        #EMステップを繰り返す
-        for i in xrange(iter_max):
-            params = np.hstack((self.transition.ravel(), self.observation.ravel()))
-            #Eステップ
-            p_hidden, p_transition = self.expectation(sequence)
-            #Mステップ
-            self.maximization(sequence, p_hidden, p_transition)
-
-            #収束しているかどうか確認
-            if np.allclose(params, np.hstack((self.transition.ravel(), self.observation.ravel()))):
-                break
-
-    #Eステップ
-    def expectation(self, sequence):
-        N = len(sequence)
-        forward = np.zeros(shape=(N, self.n_states_hidden))
-        #alpha(z_1)=p(x_1,z_1)を計算
-        forward[0] = self.initial * self.observation[sequence[0]]
-        backward = np.zeros_like(forward)
-        #beta(z_N)=p(x_N|z_N)を計算
-        backward[-1] = self.observation[sequence[-1]]
-
-        #フォーワード
-        for i in xrange(1, len(sequence)):
-            forward[i] = self.transition.dot(forward[i - 1]) * self.observation[sequence[i]]
-
-        #バックワード
-        for j in xrange(N - 2, -1, -1):
-            backward[j] = (self.observation[sequence[j + 1]] * backward[j + 1]).dot(self.transition)
-        #潜在変数z_nの事後確率分布gamma(z_n)を計算
-        p_hidden = forward * backward
-        p_hidden /= np.sum(p_hidden, axis=-1, keepdims=True)
-
-        #連続した潜在変数の同時事後確率分布xi(z_{n-1},z_n)を計算
-        p_transition = self.transition * (self.observation[sequence[1:]] * backward[1:])[:, :, None] * forward[:-1, None, :]
-        p_transition /= np.sum(p_transition, axis=(1, 2), keepdims=True)
-
-        return p_hidden, p_transition
-
-    #Mステップ
-    def maximization(self, sequence, p_hidden, p_transition):
-        #初期潜在変数の分布パラメータの更新
-        self.initial = p_hidden[0] / np.sum(p_hidden[0])
-        #遷移確率行列の更新
-        self.transition = np.sum(p_transition, axis=0) / np.sum(p_transition, axis=(0, 2))
-        self.transition /= np.sum(self.transition, axis=0, keepdims=True)
-        #観測モデルのパラメータ更新
-        x = p_hidden[:, None, :] * (np.eye(self.n_states_observe)[sequence])[:, :, None]
-        self.observation = np.sum(x, axis=0) / np.sum(p_hidden, axis=0)
+        self.x = [0]*self.n
+        self.xmap = [0]*self.n
+        self.y = [0.0]*self.n
 
 
-def create_toy_data(sample_size=100):
-
-    def throw_coin(bias):
-        if bias == 1:
-            return np.random.choice(range(2), p=[0.01, 0.99])
+    def generate_x(self):
+        if (random.random() < 0.5):
+            self.x[0] = 0
         else:
-            return np.random.choice(range(2), p=[0.03, 0.97])
+            self.x[0] = 1
 
-    bias = np.random.uniform() > 0.5
-    coin = []
-    cheats = []
-    for i in xrange(sample_size):
-        coin.append(throw_coin(bias))
-        cheats.append(bias)
-        bias = bias + np.random.choice(range(2), p=[0.99, 0.01])
-        bias = bias % 2
-    coin = np.asarray(coin)
+        for i in range(1,self.n, 1):
+            r = random.random()
+            if ( self.x[i-1] == 0 ):
+                if ( r < 0.99 ):
+                    self.x[i] = 0
+                else:
+                    self.x[i] = 1
+            else:
+                if ( r < 0.97 ):
+                    self.x[i] = 1
+                else:
+                    self.x[i] = 0
 
-    return coin, cheats
+    def generate_y(self):
+        for i in range(0,self.n):
+            self.y[i] = random.gauss(self.x[i],self.sigma)
 
+    def compute_xmap(self):
+        self.S[0][0] = - math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[0] - 0), 2)/(2*pow(self.sigma, 2)))
+        self.S[1][0] = - math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[0] - 1), 2)/(2*pow(self.sigma, 2)))
+        for i in range(1, self.n, 1):
+            self.S[0][i] = self.S[0][i - 1]  -math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[i] - 0), 2)/(2*pow(self.sigma, 2))) + math.log(0.99)
+            if self.S[1][i - 1] -math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[i] - 0), 2)/(2*pow(self.sigma, 2))) + math.log(0.03) > self.S[0][i]:
+                self.S[0][i] = self.S[1][i - 1]  -math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[i] - 0), 2)/(2*pow(self.sigma, 2))) + math.log(0.03)
+                self.C[0][i] = 1
+            else:
+                self.C[0][i] = 0
+            self.S[1][i] = self.S[0][i - 1] -math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[i] - 1), 2)/(2*pow(self.sigma, 2))) + math.log(0.01)
+            if self.S[1][i - 1] -math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[i] - 1), 2)/(2*pow(self.sigma, 2))) + math.log(0.97) > self.S[1][i]:
+                self.S[1][i] = self.S[1][i - 1] -math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[i] - 1), 2)/(2*pow(self.sigma, 2))) + math.log(0.97)
+                self.C[1][i] = 1
+            else:
+                self.C[1][i] = 0
+        if self.S[0][self.n - 1] > self.S[1][self.n - 1]:
+            self.xmap[self.n - 1] = 0
+        else :
+            self.xmap[self.n - 1] = 1
+        for i in range(self.n-1, 0, -1):
+            self.xmap[i - 1] = self.C[self.xmap[i]][i]
+        for i in range(0, self.n):
+            if self.xmap[i] != self.x[i]:
+                print('i:{0}, x:{1}, xmap:{2}, y:{3}'.format(i, self.x[i], self.xmap[i], self.y[i]))
+                print('S[0]:{0}, S[1]:{1}, C[0]:{2}, C[1]:{3}'.format(self.S[0][i], self.S[1][i], self.C[0][i], self.C[1][i]))
 
-def main():
-    coin, cheats = create_toy_data(200)
+    def compute_humming(self, i):
+        for j in range(0, self.n, 1):
+            if self.x[j] != self.xmap[j]:
+                self.humming[i] += 1;
+        #self.humming[sigma][i] = self.humming[sigma][i] / self.n
+        #print('humming:{0}'.format(self.humming))
 
-    hmm = HiddenMarkovModel(2, 2)
-    hmm.fit(coin, 100)
-    p_hidden, p_transition = hmm.expectation(coin)
+    def average_humming(self, roop, average):
+        for i in range(0, roop, 1):
+            average += self.humming[i]
+        average = average #/(roop * self.n)
+        print('average:{0}'.format(average))
+        return average
 
-    plt.plot(cheats)
-    plt.plot(p_hidden[:, 1])
-    for i in xrange(0, len(coin), 2):
-        plt.annotate(str(coin[i]), (i - .75, coin[i] / 2. + 0.2))
-    plt.ylim(-0.1, 1.1)
-    plt.show()
-    print(p_transition)
-    print(p_hidden)
+def demo():
+
+    n = 200
+    humming = 0.0
+    roop = 1000
+    count = 0
+    sigma = 0.1
+    average = 0.0
+
+    hmm = HMM(n, sigma, humming) # 隠れマルコフモデルを作る．n: 入力信号の数
+    dispersion = 0.0
+    for i in range(0, roop, 1):
+        average = 0.0
+        hmm.generate_x()
+        hmm.generate_y()
+        hmm.compute_xmap()
+        hmm.compute_humming(i)
+
+    average = hmm.average_humming(roop, average)
+        #ここはxとyのプロット用
+    t = range(n)
+    plt.plot(t, hmm.x, label='x')
+    plt.plot(t, hmm.y, '.g', label='y') # g は緑色， * は点
+    plt.plot(t, hmm.xmap, '.r', label='xmap')
+
+    plt.title('Original Signal, Observations')
+    plt.xlabel('t') # X 軸
+    plt.ylabel('x, y') # Y 軸
+    plt.legend() # 描画
+
+    plt.show() # 描画
+    print(average)
+    #plt.plot(sigma, average, 'bo')
+    #plt.errorbar(sigma, average, yerr = dispersions, fmt = 'ro', ecolor = 'g')
+    #plt.savefig('humming.png')
+    #plt.show() # 描画
 
 if __name__ == '__main__':
-    main()
+    demo()

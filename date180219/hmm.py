@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import math
 import random
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 #random.seed(20140123)
@@ -49,18 +51,18 @@ class HMM:
             self.y[i] = random.gauss(self.x[i],self.sigma)
 
     def compute_xmap(self):
-        self.S[0][0] = pow((self.y[0] - 0), 2)
-        self.S[1][0] = pow((self.y[0] - 1), 2)
-        for i in range(1, self.n):
-            self.S[0][i] = self.S[0][i - 1] - pow((self.y[i] - 0), 2) + math.log(0.99)
-            if (self.S[1][i - 1] - pow((self.y[i] - 0), 2) + math.log(0.03)) > self.S[0][i]:
-                self.S[0][i] = self.S[1][i - 1] - pow((self.y[i] - 0), 2) + math.log(0.03)
+        self.S[0][0] = - math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[0] - 0), 2)/(2*pow(self.sigma, 2)))
+        self.S[1][0] = - math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[0] - 1), 2)/(2*pow(self.sigma, 2)))
+        for i in range(1, self.n, 1):
+            self.S[0][i] = self.S[0][i - 1]  -math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[i] - 0), 2)/(2*pow(self.sigma, 2))) + math.log(0.99)
+            if self.S[1][i - 1] -math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[i] - 0), 2)/(2*pow(self.sigma, 2))) + math.log(0.03) > self.S[0][i]:
+                self.S[0][i] = self.S[1][i - 1]  -math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[i] - 0), 2)/(2*pow(self.sigma, 2))) + math.log(0.03)
                 self.C[0][i] = 1
             else:
                 self.C[0][i] = 0
-            self.S[1][i] = self.S[0][i - 1] - pow((self.y[i] - 0), 2) + math.log(0.01)
-            if (self.S[1][i - 1] - pow((self.y[i] - 1), 2) + math.log(0.97)) > self.S[1][i]:
-                self.S[1][i] = self.S[1][i - 1] - pow((self.y[i] - 1), 2) + math.log(0.97)
+            self.S[1][i] = self.S[0][i - 1] -math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[i] - 1), 2)/(2*pow(self.sigma, 2))) + math.log(0.01)
+            if self.S[1][i - 1] -math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[i] - 1), 2)/(2*pow(self.sigma, 2))) + math.log(0.97) > self.S[1][i]:
+                self.S[1][i] = self.S[1][i - 1] -math.log(math.sqrt(2*math.pi*pow(self.sigma, 2))) - (pow((self.y[i] - 1), 2)/(2*pow(self.sigma, 2))) + math.log(0.97)
                 self.C[1][i] = 1
             else:
                 self.C[1][i] = 0
@@ -79,7 +81,7 @@ class HMM:
         #print('humming:{0}'.format(self.humming))
 
     def average_humming(self, roop, average):
-        for i in range(0, roop):
+        for i in range(0, roop, 1):
             average += self.humming[i]
         average = average /(roop * self.n)
         print('average:{0}'.format(average))
@@ -88,7 +90,7 @@ class HMM:
         #分散を求める
     def dispersion_humming(self, roop, average, dispersion):
         #1/nΣ(i = 1, nまで)(xi^2 - μ^2)
-        for i in range(0, roop):
+        for i in range(0, roop, 1):
             dispersion += (pow((self.humming[i] / self.n), 2) - pow(average, 2))
         dispersion = dispersion / roop
         return dispersion
@@ -105,18 +107,19 @@ def demo():
     dispersion = 0.0
     dispersions = []
 
-    for sigma in range(1, 31, 1):
-        hmm = HMM(n, float(sigma) / 10, humming) # 隠れマルコフモデルを作る．n: 入力信号の数
+    for sigma in range(10, 21, 1):
+        hmm = HMM(n, float(sigma) / 100, humming) # 隠れマルコフモデルを作る．n: 入力信号の数
         dispersion = 0.0
-        for i in range(0, roop):
+        for i in range(0, roop, 1):
             average = 0.0
             hmm.generate_x()
             hmm.generate_y()
             hmm.compute_xmap()
             hmm.compute_humming(i)
         averages.append(hmm.average_humming(roop, average))
-        dispersions.append(hmm.dispersion_humming(roop, averages[sigma-1], dispersion))
+        dispersions.append(hmm.dispersion_humming(roop, averages[count], dispersion))
         t = range(n)
+        #ここはxとyのプロット用
         #plt.plot(t, hmm.x, label='x')
         #plt.plot(t, hmm.y, '.g', label='y') # g は緑色， * は点
         #plt.plot(t, hmm.xmap, '.r', label='xmap')
@@ -128,14 +131,14 @@ def demo():
 
         #plt.show() # 描画
         count = count + 1
-    for i in range(1, 31, 1):
-        sigmas.append(float(i)/10)
+    for i in range(10, 21, 1):
+        sigmas.append(float(i) / 100)
     print(sigmas)
     print(dispersions)
-    plt.bar(sigmas, averages, tick_label=sigmas, width=0.1)
-    plt.show() # 描画
-    plt.bar(sigmas, dispersions, tick_label=sigmas, width=0.1)
-    plt.show() # 描画
+    plt.plot(sigmas, averages, 'bo')
+    plt.errorbar(sigmas, averages, yerr = dispersions, fmt = 'ro', ecolor = 'g')
+    plt.savefig('hummingmini.png')
+    #plt.show() # 描画
 
 if __name__ == '__main__':
     demo()
